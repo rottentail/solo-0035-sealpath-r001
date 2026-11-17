@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sealpath/internal/repository"
 	"sealpath/internal/transport"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,10 @@ func main() {
 	algorithm := flag.String("algorithm", "ed25519", "artifact signing algorithm")
 	flag.Parse()
 	samples, err := generate(*algorithm)
+	if err != nil {
+		fatal(err)
+	}
+	joint, err := generateJoint()
 	if err != nil {
 		fatal(err)
 	}
@@ -53,7 +58,12 @@ func main() {
 	go func() { _ = server.Serve(listener) }()
 	defer server.Shutdown(context.Background())
 	client := &client{base: "http://" + listener.Addr().String(), http: &http.Client{Timeout: 5 * time.Second}}
-	result, err := walk(client, samples, *workflow, statePath)
+	var result map[string]any
+	if strings.HasPrefix(*workflow, "joint") {
+		result, err = walkJoint(client, joint, *workflow)
+	} else {
+		result, err = walk(client, samples, *workflow, statePath)
+	}
 	if err != nil {
 		fatal(err)
 	}

@@ -58,6 +58,34 @@
     {
       "workflow_id": "retire",
       "command": "go run ./cmd/sample -workflow retire"
+    },
+    {
+      "workflow_id": "joint",
+      "command": "go run ./cmd/sample -workflow joint"
+    },
+    {
+      "workflow_id": "joint-setup",
+      "command": "go run ./cmd/sample -workflow joint-setup"
+    },
+    {
+      "workflow_id": "joint-renewal",
+      "command": "go run ./cmd/sample -workflow joint-renewal"
+    },
+    {
+      "workflow_id": "joint-suspension",
+      "command": "go run ./cmd/sample -workflow joint-suspension"
+    },
+    {
+      "workflow_id": "joint-hidden-compromise",
+      "command": "go run ./cmd/sample -workflow joint-hidden-compromise"
+    },
+    {
+      "workflow_id": "joint-bundle",
+      "command": "go run ./cmd/sample -workflow joint-bundle"
+    },
+    {
+      "workflow_id": "joint-compare",
+      "command": "go run ./cmd/sample -workflow joint-compare"
     }
   ]
 }

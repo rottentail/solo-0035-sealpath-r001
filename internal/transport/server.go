@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sealpath/internal/artifact"
 	"sealpath/internal/authority"
+	"sealpath/internal/endorsement"
 	"sealpath/internal/evidence"
 	"sealpath/internal/model"
 	"sealpath/internal/policy"
@@ -24,12 +25,13 @@ type Server struct {
 	Revocations revocation.Service
 	Policies    policy.Service
 	Verifier    verification.Service
+	Endorsement endorsement.Service
 	Evidence    evidence.Service
 	Logger      *slog.Logger
 }
 
 func New(store *repository.Store, logger *slog.Logger) *Server {
-	return &Server{Store: store, Authority: authority.Service{Store: store}, Artifacts: artifact.Service{Store: store}, Signatures: signature.Service{Store: store}, Revocations: revocation.Service{Store: store}, Policies: policy.Service{Store: store}, Verifier: verification.Service{Store: store}, Evidence: evidence.Service{Store: store}, Logger: logger}
+	return &Server{Store: store, Authority: authority.Service{Store: store}, Artifacts: artifact.Service{Store: store}, Signatures: signature.Service{Store: store}, Revocations: revocation.Service{Store: store}, Policies: policy.Service{Store: store}, Verifier: verification.Service{Store: store}, Endorsement: endorsement.Service{Store: store}, Evidence: evidence.Service{Store: store}, Logger: logger}
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -55,6 +57,24 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/evidence/replay", s.replay)
 	mux.HandleFunc("GET /v1/evidence/compare", s.compare)
 	mux.HandleFunc("GET /v1/events", s.events)
+	mux.HandleFunc("POST /v1/institutions", s.putInstitution)
+	mux.HandleFunc("GET /v1/institutions", s.listInstitutions)
+	mux.HandleFunc("GET /v1/institutions/{id}", s.getInstitution)
+	mux.HandleFunc("POST /v1/institutions/{id}/suspend", s.suspendInstitution)
+	mux.HandleFunc("POST /v1/institutions/{id}/reinstate", s.reinstateInstitution)
+	mux.HandleFunc("POST /v1/role-bindings", s.bindRole)
+	mux.HandleFunc("GET /v1/role-bindings", s.listRoleBindings)
+	mux.HandleFunc("POST /v1/endorsement-combinations", s.putCombination)
+	mux.HandleFunc("GET /v1/endorsement-combinations", s.listCombinations)
+	mux.HandleFunc("POST /v1/endorsement-combinations/{id}/retire", s.retireCombination)
+	mux.HandleFunc("POST /v1/compromises", s.recordCompromise)
+	mux.HandleFunc("GET /v1/compromises", s.listCompromises)
+	mux.HandleFunc("POST /v1/joint-decisions", s.verifyJoint)
+	mux.HandleFunc("GET /v1/joint-decisions", s.listJointDecisions)
+	mux.HandleFunc("GET /v1/joint-decisions/{id}", s.getJointDecision)
+	mux.HandleFunc("GET /v1/joint-decisions/{id}/bundle", s.exportJointBundle)
+	mux.HandleFunc("POST /v1/joint-evidence/replay", s.replayJoint)
+	mux.HandleFunc("GET /v1/joint-evidence/compare", s.compareJoint)
 	return s.middleware(mux)
 }
 func (s *Server) middleware(next http.Handler) http.Handler {

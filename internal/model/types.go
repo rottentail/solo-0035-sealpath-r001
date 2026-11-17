@@ -123,4 +123,11 @@ type State struct {
 	Decisions    map[string]Decision       `json:"decisions"`
 	Materials    map[string]Material       `json:"materials"`
 	Events       []Event                   `json:"events"`
+
+	Institutions   map[string]Institution            `json:"institutions"`
+	RoleBindings   map[string]RoleBinding            `json:"role_bindings"`
+	Combinations   map[string]EndorsementCombination `json:"endorsement_combinations"`
+	Compromises    map[string]Compromise             `json:"compromises"`
+	JointDecisions map[string]JointDecision          `json:"joint_decisions"`
+	JointMaterials map[string]JointMaterial          `json:"joint_materials"`
 }

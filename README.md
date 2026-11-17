@@ -21,7 +21,7 @@ go run ./cmd/sample -workflow unknown
 
 可用 `-algorithm rsa_pss_sha256` 或 `-algorithm ecdsa_sha256` 生成其他算法的制品签名，证书签发仍使用 Ed25519。
 
-可选演示：`certificates`、`trust`、`artifact`、`signature`、`policy`、`revocation`、`verify`、`unknown`、`history`、`bundle`、`compare`、`restart`、`retire`。演示是有界的真实使用流程，初始化基线尚未附带自动化测试套件。
+可选演示：`certificates`、`trust`、`artifact`、`signature`、`policy`、`revocation`、`verify`、`unknown`、`history`、`bundle`、`compare`、`restart`、`retire`，以及联合发行演示 `joint`、`joint-setup`、`joint-renewal`、`joint-suspension`、`joint-hidden-compromise`、`joint-bundle`、`joint-compare`。演示是有界的真实使用流程。
 
 ## 接入顺序
 
@@ -45,6 +45,34 @@ go run ./cmd/sample -workflow unknown
 | `trusted_with_warning` | `best_effort` 策略允许保留撤销不确定性；调用方必须检查警告 |
 
 无效请求和不存在的引用返回 HTTP 错误；领域判断失败一般仍形成可查询的决定，不能仅检查 HTTP 200 就放行发行。
+
+## 联合发行认可
+
+联合发行要求多个机构共同认可同一制品。接收方自己维护机构、角色关系和认可组合；发行方只提交签名。机构身份来自接收方记录，不来自证书主体或签发者文字。
+
+1. `POST /v1/institutions` 建立机构（`id`、`name`、可选 `started_at`、`expected_revision`）。每个机构有一个当前任期（term）。
+2. `POST /v1/institutions/{id}/suspend` 与 `POST /v1/institutions/{id}/reinstate` 接收 `expected_revision` 和可选 `at`。暂停关闭当前任期，恢复开启新任期；旧任期的角色关系不能用于新任期。
+3. `POST /v1/role-bindings` 提交 `institution_id`、`certificate_id`、`role`（`primary` / `reviewer`）、有效期。省略 `term` 时绑定当前任期。同一证书同一任期只能有一条角色关系；同一机构、同一角色、同一任期的续证或交叉签发只有在有效期不重叠时才允许，因此续证不能多算一票。
+4. `POST /v1/endorsement-combinations` 提交 `slots`。只接受两种形状：一家主发行方加一家审核方，或两家独立审核方。每个槽位必须由不同机构填写。
+5. `POST /v1/compromises` 记录某张证书从 `effective_at` 起不可信。该记录按证书登记，但一旦该证书属于某机构，失效影响的是整个机构，选择另一张证书或另一组合不能恢复其认可。
+6. `POST /v1/joint-decisions` 提交 `artifact_id`、`trust_set_id`、`policy_id`、`signature_ids`、`combination_ids` 与明确的 `at`。服务在同一状态事务内固定全部材料，然后逐个组合给出结果。
+
+联合决定的 `verdict`：
+
+| 值 | 含义 |
+|---|---|
+| `trusted` | 至少一个组合的角色槽位全部由独立可用机构填满，且撤销证据充分 |
+| `trusted_with_warning` | 仅因 `best_effort` 策略接受撤销不确定性；调用方必须检查警告 |
+| `indeterminate` | 没有组合可用，但至少一个组合只缺撤销证据 |
+| `rejected` | 存在明确失败，或提交的候选签名涉及已登记证书泄露的机构 |
+
+每个组合都返回 `status`、`assignments`、`disclosure` 和 `reasons`。`disclosure` 列出该组合需要披露的机构、证书、签名和 CRL；`selected_combination` 是在充分组合中选择披露最少的一个。失败会带 `failure_scope`：
+
+- `candidate`：只有这张证书或这个签名不可用，换用其他组合仍可能充分。
+- `binding`：某个角色关系不可用。
+- `institution`：整个机构失去认可。此时即使另一组合仍能验证，决定也必须是 `rejected`，不能把该机构的失信掩盖成可用性提升。
+
+`GET /v1/joint-decisions/{id}` 读取历史决定；`GET /v1/joint-decisions/{id}/bundle` 导出 `sealpath-joint-evidence-v1` 包；`POST /v1/joint-evidence/replay` 重放；`GET /v1/joint-evidence/compare?left=&right=` 比较两个联合决定。历史决定保存当时捕获的机构和角色关系，之后的暂停、恢复或新增组合不会改写它。证据包仍不自带出具方签名，机构认可必须由接收方渠道单独确认。
 
 ## 查询与复核
 

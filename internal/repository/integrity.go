@@ -10,7 +10,7 @@ func ValidateState(s model.State) error {
 	if s.Version != 1 {
 		return fmt.Errorf("unsupported state version %d", s.Version)
 	}
-	if s.Certificates == nil || s.TrustSets == nil || s.Artifacts == nil || s.Signatures == nil || s.Revocations == nil || s.Policies == nil || s.Decisions == nil || s.Materials == nil {
+	if s.Certificates == nil || s.TrustSets == nil || s.Artifacts == nil || s.Signatures == nil || s.Revocations == nil || s.Policies == nil || s.Decisions == nil || s.Materials == nil || s.Institutions == nil || s.RoleBindings == nil || s.Combinations == nil || s.Compromises == nil || s.JointDecisions == nil || s.JointMaterials == nil {
 		return fmt.Errorf("state collections must not be null")
 	}
 	for id, c := range s.Certificates {
@@ -64,6 +64,9 @@ func ValidateState(s model.State) error {
 		if !ok || err != nil || d.ID != id || d.MaterialHash != hash {
 			return fmt.Errorf("decision evidence mismatch %s", id)
 		}
+	}
+	if err := validateJointState(s); err != nil {
+		return err
 	}
 	var sequence uint64
 	for _, event := range s.Events {
